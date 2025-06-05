@@ -24,17 +24,19 @@ Move your player, shoot enemies, dodge bullets, and compete for the highest scor
 ## How to Run
 
 1. **Install Go** (if not already):  
+    ```
    https://go.dev/dl/
-
+    ```
 2. **Clone or Download this repository**
-https://github.com/tylerkibble/2D-GO.git
-
-1. **Install dependencies:**  
+    ```
+    https://github.com/tylerkibble/2D-GO.git
+    ```
+3. **Install dependencies:**  
    ```
    go mod tidy
    ```
 
-2. **Run the game:**  
+4. **Run the game:**  
    ```
    go run main.go
    ```
