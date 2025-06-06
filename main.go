@@ -186,6 +186,9 @@ func getTopScores(n int) [][2]string {
 		pairs = append(pairs, pair{name, score})
 	}
 	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].Score == pairs[j].Score {
+			return pairs[i].Name < pairs[j].Name // Alphabetical if scores are equal
+		}
 		return pairs[i].Score > pairs[j].Score
 	})
 	top := [][2]string{}
@@ -635,11 +638,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 		// Draw leaderboard entries (centered)
 		topScores := getTopScores(10)
+		// Find max line width for centering
+		maxLineWidth := 0
+		lines := make([]string, len(topScores))
 		for i, entry := range topScores {
 			name := entry[0]
 			score := entry[1]
 			line := fmt.Sprintf("%2d. %-12s %6s", i+1, name, score)
-			lineWidth := float64(len(line)) * 8 // 8px per character (monospace)
+			lines[i] = line
+			if len(line) > maxLineWidth {
+				maxLineWidth = len(line)
+			}
+		}
+		for i, line := range lines {
+			lineWidth := float64(maxLineWidth) * 8 // Use max width for all lines
 			textOpEntry := &text.DrawOptions{}
 			textOpEntry.GeoM.Translate(centerX-lineWidth/2, y+float64(i*24))
 			text.Draw(screen, line, fontFace, textOpEntry)
