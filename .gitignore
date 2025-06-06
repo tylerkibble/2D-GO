@@ -1,1 +1,53 @@
-/scores.json
+
+# Ignore virtual environments
+env/
+venv/
+ENV/
+.venv/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore logs and databases
+*.log
+*.sqlite3
+
+# Ignore editor/project files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Ignore build/output folders
+build/
+dist/
+*.egg-info/
+
+# Ignore node modules (if using JS)
+node_modules/
+
+# Ignore compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.a
+
+# Ignore test coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore backup files
+*~
+*.bak
+*.tmp
+
+# Ignore Json files
+*.json
