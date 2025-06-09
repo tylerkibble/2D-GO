@@ -47,6 +47,13 @@ Move your player, shoot enemies, dodge bullets, and compete for the highest scor
 
    The game window will open. Enter a username and start playing!
 
+## Updates
+   - When the game is updated please delete the old version and pull the files again. 
+   - You can recompile the EXE with 
+   ```
+   go build -o 2D-GO.exe -ldflags="-X=runtime.godebugDefault=asyncpreemptoff=1 -H=windowsgui"
+   ```
+
 ## Saving & High Scores
 
 - High scores are saved per username in `scores.json` in the same directory.
