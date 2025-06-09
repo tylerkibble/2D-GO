@@ -563,306 +563,329 @@ func (g *Game) Update() error {
 	return nil
 }
 
+// UI
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.gameState == "menu" {
 		screen.Fill(color.RGBA{0, 0, 0, 255})
 
-		// Card background
 		cardW, cardH := 400.0, 420.0
 		cardX := float64(screenWidth)/2 - cardW/2
 		cardY := float64(screenHeight)/2 - cardH/2
-		cardImg := ebiten.NewImage(int(cardW), int(cardH))
-		cardImg.Fill(color.RGBA{30, 30, 40, 220})
-		cardOp := &ebiten.DrawImageOptions{}
-		cardOp.GeoM.Translate(cardX, cardY)
-		screen.DrawImage(cardImg, cardOp)
 
-		// Centered text positions
-		centerX := float64(screenWidth) / 2
-		y := cardY + 36
+		card := Card{
+			X: cardX, Y: cardY, W: cardW, H: cardH,
+			BgColor: color.RGBA{30, 30, 40, 220},
+			DrawContent: func(screen *ebiten.Image, c *Card) {
+				centerX := c.X + c.W/2
+				y := c.Y + 36
 
-		title := "2D-GO"
-		instr := "Enter Username:"
-		userInput := g.usernameInput
-		if len(userInput) == 0 {
-			userInput = "_"
+				title := "2D-GO"
+				instr := "Enter Username:"
+				userInput := g.usernameInput
+				if len(userInput) == 0 {
+					userInput = "_"
+				}
+				startMsg := "Press ENTER to Start"
+				if len(g.usernameInput) == 0 {
+					startMsg = "Type your username to Start"
+				}
+				highScoreMsg := ""
+				if g.usernameInput != "" {
+					highScore := scores.HighScores[g.usernameInput]
+					highScoreMsg = fmt.Sprintf("High Score: %d", highScore)
+				}
+
+				// --- Calculate max width for the top block ---
+				topLines := []string{title, instr, userInput, startMsg}
+				if highScoreMsg != "" {
+					topLines = append(topLines, highScoreMsg)
+				}
+				maxTopWidth := 0
+				for _, line := range topLines {
+					if len(line) > maxTopWidth {
+						maxTopWidth = len(line)
+					}
+				}
+				maxTopWidthF := float64(maxTopWidth) * 8
+
+				// Draw Title (centered as a block)
+				textOp := &text.DrawOptions{}
+				textOp.GeoM.Translate(centerX-maxTopWidthF/2+(float64(maxTopWidth-len(title))*4), y)
+				text.Draw(screen, title, fontFace, textOp)
+				y += 48
+
+				// Draw instruction (centered as a block)
+				textOpInstr := &text.DrawOptions{}
+				textOpInstr.GeoM.Translate(centerX-maxTopWidthF/2+(float64(maxTopWidth-len(instr))*4), y)
+				text.Draw(screen, instr, fontFace, textOpInstr)
+				y += 36
+
+				// Draw username input (centered as a block)
+				textOpInput := &text.DrawOptions{}
+				textOpInput.GeoM.Translate(centerX-maxTopWidthF/2+(float64(maxTopWidth-len(userInput))*4), y)
+				text.Draw(screen, userInput, fontFace, textOpInput)
+				y += 36
+
+				// Draw start message (centered as a block)
+				textOpStart := &text.DrawOptions{}
+				textOpStart.GeoM.Translate(centerX-maxTopWidthF/2+(float64(maxTopWidth-len(startMsg))*4), y)
+				text.Draw(screen, startMsg, fontFace, textOpStart)
+				y += 36
+
+				// Draw high score if available (centered as a block)
+				if highScoreMsg != "" {
+					textOpHS := &text.DrawOptions{}
+					textOpHS.GeoM.Translate(centerX-maxTopWidthF/2+(float64(maxTopWidth-len(highScoreMsg))*4), y)
+					text.Draw(screen, highScoreMsg, fontFace, textOpHS)
+					y += 36
+				}
+
+				// --- Leaderboard title and entries ---
+				leaderboardTitle := "Leaderboard (Top 10)"
+				topScores := getTopScores(10)
+				maxLineWidth := len(leaderboardTitle)
+				lines := make([]string, len(topScores))
+				for i, entry := range topScores {
+					name := entry[0]
+					score := entry[1]
+					line := fmt.Sprintf("%2d. %-12s %6s", i+1, name, score)
+					lines[i] = line
+					if len(line) > maxLineWidth {
+						maxLineWidth = len(line)
+					}
+				}
+				maxLineWidthF := float64(maxLineWidth) * 8
+
+				// Draw leaderboard title (centered as a block)
+				textOpLB := &text.DrawOptions{}
+				textOpLB.GeoM.Translate(centerX-maxLineWidthF/2+(float64(maxLineWidth-len(leaderboardTitle))*4), y)
+				text.Draw(screen, leaderboardTitle, fontFace, textOpLB)
+				y += 32
+
+				// Draw leaderboard entries (centered as a block)
+				for i, line := range lines {
+					textOpEntry := &text.DrawOptions{}
+					textOpEntry.GeoM.Translate(centerX-maxLineWidthF/2+(float64(maxLineWidth-len(line))*4), y+float64(i*24))
+					text.Draw(screen, line, fontFace, textOpEntry)
+				}
+
+				// --- Settings Button (centered) ---
+				btnW, btnH := 120.0, 40.0
+				btnX := centerX - btnW/2
+				btnY := c.Y + c.H - btnH - 24
+				btnImg := ebiten.NewImage(int(btnW), int(btnH))
+				btnImg.Fill(color.RGBA{60, 60, 120, 200})
+				btnOp := &ebiten.DrawImageOptions{}
+				btnOp.GeoM.Translate(btnX, btnY)
+				screen.DrawImage(btnImg, btnOp)
+
+				btnText := "Settings"
+				btnTextWidth := float64(len(btnText)) * 8
+				btnTextOp := &text.DrawOptions{}
+				btnTextOp.GeoM.Translate(centerX-btnTextWidth/2, btnY+10)
+				text.Draw(screen, btnText, fontFace, btnTextOp)
+			},
 		}
-		startMsg := "Press ENTER to Start"
-		if len(g.usernameInput) == 0 {
-			startMsg = "Type your name to enable Start"
-		}
-		highScoreMsg := ""
-		if g.usernameInput != "" {
-			highScore := scores.HighScores[g.usernameInput]
-			highScoreMsg = fmt.Sprintf("High Score: %d", highScore)
-		}
-
-		// Draw Title
-		textOp := &text.DrawOptions{}
-		textOp.GeoM.Translate(centerX-float64(len(title))*4, y)
-		text.Draw(screen, title, fontFace, textOp)
-		y += 48
-
-		// Draw instruction
-		textOpInstr := &text.DrawOptions{}
-		textOpInstr.GeoM.Translate(centerX-float64(len(instr))*4, y)
-		text.Draw(screen, instr, fontFace, textOpInstr)
-		y += 36
-
-		// Draw username input
-		textOpInput := &text.DrawOptions{}
-		textOpInput.GeoM.Translate(centerX-float64(len(userInput))*4, y)
-		text.Draw(screen, userInput, fontFace, textOpInput)
-		y += 36
-
-		// Draw start message
-		textOpStart := &text.DrawOptions{}
-		textOpStart.GeoM.Translate(centerX-float64(len(startMsg))*4, y)
-		text.Draw(screen, startMsg, fontFace, textOpStart)
-		y += 36
-
-		// Draw high score if available
-		if highScoreMsg != "" {
-			textOpHS := &text.DrawOptions{}
-			textOpHS.GeoM.Translate(centerX-float64(len(highScoreMsg))*4, y)
-			text.Draw(screen, highScoreMsg, fontFace, textOpHS)
-			y += 36
-		}
-
-		// Draw leaderboard title
-		leaderboardTitle := "Leaderboard (Top 10)"
-		textOpLB := &text.DrawOptions{}
-		textOpLB.GeoM.Translate(centerX-float64(len(leaderboardTitle))*4, y)
-		text.Draw(screen, leaderboardTitle, fontFace, textOpLB)
-		y += 32
-
-		// Draw leaderboard entries (centered)
-		topScores := getTopScores(10)
-		// Find max line width for centering
-		maxLineWidth := 0
-		lines := make([]string, len(topScores))
-		for i, entry := range topScores {
-			name := entry[0]
-			score := entry[1]
-			line := fmt.Sprintf("%2d. %-12s %6s", i+1, name, score)
-			lines[i] = line
-			if len(line) > maxLineWidth {
-				maxLineWidth = len(line)
-			}
-		}
-		for i, line := range lines {
-			lineWidth := float64(maxLineWidth) * 8 // Use max width for all lines
-			textOpEntry := &text.DrawOptions{}
-			textOpEntry.GeoM.Translate(centerX-lineWidth/2, y+float64(i*24))
-			text.Draw(screen, line, fontFace, textOpEntry)
-		}
-
-		// --- Settings Button ---
-		btnW, btnH := 120.0, 40.0
-		btnX := centerX - btnW/2
-		btnY := cardY + cardH - btnH - 24
-		btnImg := ebiten.NewImage(int(btnW), int(btnH))
-		btnImg.Fill(color.RGBA{60, 60, 120, 200})
-		btnOp := &ebiten.DrawImageOptions{}
-		btnOp.GeoM.Translate(btnX, btnY)
-		screen.DrawImage(btnImg, btnOp)
-
-		btnText := "Settings"
-		btnTextWidth := float64(len(btnText)) * 8
-		btnTextOp := &text.DrawOptions{}
-		btnTextOp.GeoM.Translate(centerX-btnTextWidth/2, btnY+10)
-		text.Draw(screen, btnText, fontFace, btnTextOp)
-
+		card.Draw(screen)
 		return
 	}
 
-	// --- Settings Page ---
 	if g.gameState == "settings" {
-		screen.Fill(color.RGBA{20, 20, 40, 255})
+		screen.Fill(color.RGBA{0, 0, 0, 255})
 
 		centerX := float64(screenWidth) / 2
 		cardW, cardH := 400.0, 300.0
 		cardX := centerX - cardW/2
 		cardY := float64(screenHeight)/2 - cardH/2
 
-		cardImg := ebiten.NewImage(int(cardW), int(cardH))
-		cardImg.Fill(color.RGBA{40, 40, 60, 220})
-		cardOp := &ebiten.DrawImageOptions{}
-		cardOp.GeoM.Translate(cardX, cardY)
-		screen.DrawImage(cardImg, cardOp)
+		card := Card{
+			X: cardX, Y: cardY, W: cardW, H: cardH,
+			BgColor: color.RGBA{30, 30, 40, 220},
+			DrawContent: func(screen *ebiten.Image, c *Card) {
+				title := "Settings"
+				titleWidth := float64(len(title)) * 8
+				textOp := &text.DrawOptions{}
+				textOp.GeoM.Translate(centerX-titleWidth/2, c.Y+36)
+				text.Draw(screen, title, fontFace, textOp)
 
-		title := "Settings"
-		titleWidth := float64(len(title)) * 8
-		textOp := &text.DrawOptions{}
-		textOp.GeoM.Translate(centerX-titleWidth/2, cardY+36)
-		text.Draw(screen, title, fontFace, textOp)
+				// --- Dropdown for screen size (centered) ---
+				ddW, ddH := 200.0, 32.0
+				ddX := centerX - ddW/2
+				ddY := c.Y + 100.0
+				screenSizes := []string{"640 x 480", "800 x 600", "1024 x 768", "Custom..."}
 
-		// --- Dropdown for screen size ---
-		ddX, ddY := centerX-100.0, cardY+100.0
-		ddW, ddH := 200.0, 32.0
-		screenSizes := []string{"640 x 480", "800 x 600", "1024 x 768", "Custom..."}
+				// Draw dropdown box (centered)
+				ddImg := ebiten.NewImage(int(ddW), int(ddH))
+				ddImg.Fill(color.RGBA{60, 60, 120, 200})
+				ddOp := &ebiten.DrawImageOptions{}
+				ddOp.GeoM.Translate(ddX, ddY)
+				screen.DrawImage(ddImg, ddOp)
 
-		// Draw dropdown box
-		ddImg := ebiten.NewImage(int(ddW), int(ddH))
-		ddImg.Fill(color.RGBA{80, 80, 120, 255})
-		ddOp := &ebiten.DrawImageOptions{}
-		ddOp.GeoM.Translate(ddX, ddY)
-		screen.DrawImage(ddImg, ddOp)
+				// Draw selected option (centered in dropdown)
+				selText := screenSizes[g.selectedScreen]
+				if g.selectedScreen == 3 && g.customWidth > 0 && g.customHeight > 0 {
+					selText = fmt.Sprintf("Custom: %dx%d", g.customWidth, g.customHeight)
+				}
+				selTextWidth := float64(len(selText)) * 8
+				selTextOp := &text.DrawOptions{}
+				selTextOp.GeoM.Translate(centerX-selTextWidth/2, ddY+8)
+				text.Draw(screen, selText, fontFace, selTextOp)
 
-		// Draw selected option
-		selText := screenSizes[g.selectedScreen]
-		if g.selectedScreen == 3 && g.customWidth > 0 && g.customHeight > 0 {
-			selText = fmt.Sprintf("Custom: %dx%d", g.customWidth, g.customHeight)
+				// Draw dropdown arrow (right side of dropdown)
+				arrow := "▼"
+				arrowOp := &text.DrawOptions{}
+				arrowOp.GeoM.Translate(ddX+ddW-24, ddY+8)
+				text.Draw(screen, arrow, fontFace, arrowOp)
+
+				// Draw options if open (centered)
+				if g.dropdownOpen {
+					for i, opt := range screenSizes {
+						optImg := ebiten.NewImage(int(ddW), int(ddH))
+						optImg.Fill(color.RGBA{60, 60, 120, 200})
+						optOp := &ebiten.DrawImageOptions{}
+						optOp.GeoM.Translate(ddX, ddY+ddH+float64(i)*ddH)
+						screen.DrawImage(optImg, optOp)
+
+						optWidth := float64(len(opt)) * 8
+						optTextOp := &text.DrawOptions{}
+						optTextOp.GeoM.Translate(centerX-optWidth/2, ddY+ddH+float64(i)*ddH+8)
+						text.Draw(screen, opt, fontFace, optTextOp)
+					}
+				}
+
+				// --- Custom input dialog (centered) ---
+				if g.customInput {
+					dialogW, dialogH := 260.0, 80.0
+					dialogX := centerX - dialogW/2
+					dialogY := c.Y + 160
+					dialogImg := ebiten.NewImage(int(dialogW), int(dialogH))
+					dialogImg.Fill(color.RGBA{30, 30, 40, 240})
+					dialogOp := &ebiten.DrawImageOptions{}
+					dialogOp.GeoM.Translate(dialogX, dialogY)
+					screen.DrawImage(dialogImg, dialogOp)
+
+					prompt := "Enter width,height (e.g. 900,700):"
+					promptWidth := float64(len(prompt)) * 8
+					promptOp := &text.DrawOptions{}
+					promptOp.GeoM.Translate(centerX-promptWidth/2, dialogY+16)
+					text.Draw(screen, prompt, fontFace, promptOp)
+
+					inputWidth := float64(len(g.customInputStr)) * 8
+					inputOp := &text.DrawOptions{}
+					inputOp.GeoM.Translate(centerX-inputWidth/2, dialogY+40)
+					text.Draw(screen, g.customInputStr, fontFace, inputOp)
+				}
+
+				// --- Back button (centered) ---
+				btnW, btnH := 120.0, 40.0
+				btnX := centerX - btnW/2
+				btnY := c.Y + c.H - btnH - 24
+				btnImg := ebiten.NewImage(int(btnW), int(btnH))
+				btnImg.Fill(color.RGBA{60, 60, 120, 200})
+				btnOp := &ebiten.DrawImageOptions{}
+				btnOp.GeoM.Translate(btnX, btnY)
+				screen.DrawImage(btnImg, btnOp)
+
+				btnText := "Back"
+				btnTextWidth := float64(len(btnText)) * 8
+				btnTextOp := &text.DrawOptions{}
+				btnTextOp.GeoM.Translate(centerX-btnTextWidth/2, btnY+10)
+				text.Draw(screen, btnText, fontFace, btnTextOp)
+			},
 		}
-		selTextOp := &text.DrawOptions{}
-		selTextOp.GeoM.Translate(ddX+12, ddY+8)
-		text.Draw(screen, selText, fontFace, selTextOp)
-
-		// Draw dropdown arrow
-		arrow := "▼"
-		arrowOp := &text.DrawOptions{}
-		arrowOp.GeoM.Translate(ddX+ddW-24, ddY+8)
-		text.Draw(screen, arrow, fontFace, arrowOp)
-
-		// Draw options if open
-		if g.dropdownOpen {
-			for i, opt := range screenSizes {
-				optImg := ebiten.NewImage(int(ddW), int(ddH))
-				optImg.Fill(color.RGBA{60, 60, 100, 230})
-				optOp := &ebiten.DrawImageOptions{}
-				optOp.GeoM.Translate(ddX, ddY+ddH+float64(i)*ddH)
-				screen.DrawImage(optImg, optOp)
-
-				optTextOp := &text.DrawOptions{}
-				optTextOp.GeoM.Translate(ddX+12, ddY+ddH+float64(i)*ddH+8)
-				text.Draw(screen, opt, fontFace, optTextOp)
-			}
-		}
-
-		// --- Custom input dialog ---
-		if g.customInput {
-			dialogW, dialogH := 260.0, 80.0
-			dialogX := centerX - dialogW/2
-			dialogY := cardY + 160
-			dialogImg := ebiten.NewImage(int(dialogW), int(dialogH))
-			dialogImg.Fill(color.RGBA{30, 30, 60, 240})
-			dialogOp := &ebiten.DrawImageOptions{}
-			dialogOp.GeoM.Translate(dialogX, dialogY)
-			screen.DrawImage(dialogImg, dialogOp)
-
-			prompt := "Enter width,height (e.g. 900,700):"
-			promptOp := &text.DrawOptions{}
-			promptOp.GeoM.Translate(dialogX+12, dialogY+16)
-			text.Draw(screen, prompt, fontFace, promptOp)
-
-			inputOp := &text.DrawOptions{}
-			inputOp.GeoM.Translate(dialogX+12, dialogY+40)
-			text.Draw(screen, g.customInputStr, fontFace, inputOp)
-		}
-
-		// --- Back button ---
-		btnW, btnH := 120.0, 40.0
-		btnX := centerX - btnW/2
-		btnY := cardY + cardH - btnH - 24
-		btnImg := ebiten.NewImage(int(btnW), int(btnH))
-		btnImg.Fill(color.RGBA{80, 80, 80, 200})
-		btnOp := &ebiten.DrawImageOptions{}
-		btnOp.GeoM.Translate(btnX, btnY)
-		screen.DrawImage(btnImg, btnOp)
-
-		btnText := "Back"
-		btnTextWidth := float64(len(btnText)) * 8
-		btnTextOp := &text.DrawOptions{}
-		btnTextOp.GeoM.Translate(centerX-btnTextWidth/2, btnY+10)
-		text.Draw(screen, btnText, fontFace, btnTextOp)
-
+		card.Draw(screen)
 		return
 	}
 
-	// --- Death Screen ---
 	if g.gameState == "dead" {
-		screen.Fill(color.RGBA{20, 0, 0, 255})
+		screen.Fill(color.RGBA{0, 0, 0, 255})
 
 		centerX := float64(screenWidth) / 2
 		cardW, cardH := 400.0, 300.0
 		cardX := centerX - cardW/2
 		cardY := float64(screenHeight)/2 - cardH/2
 
-		cardImg := ebiten.NewImage(int(cardW), int(cardH))
-		cardImg.Fill(color.RGBA{60, 20, 20, 220})
-		cardOp := &ebiten.DrawImageOptions{}
-		cardOp.GeoM.Translate(cardX, cardY)
-		screen.DrawImage(cardImg, cardOp)
+		card := Card{
+			X: cardX, Y: cardY, W: cardW, H: cardH,
+			BgColor: color.RGBA{30, 30, 40, 220},
+			DrawContent: func(screen *ebiten.Image, c *Card) {
+				title := "Game Over"
+				scoreMsg := fmt.Sprintf("Score: %d", g.deathScore)
+				highScoreMsg := ""
+				if g.username != "" {
+					highScore := scores.HighScores[g.username]
+					highScoreMsg = fmt.Sprintf("High Score: %d", highScore)
+				}
 
-		title := "Game Over"
-		scoreMsg := fmt.Sprintf("Score: %d", g.deathScore)
-		highScoreMsg := ""
-		if g.username != "" {
-			highScore := scores.HighScores[g.username]
-			highScoreMsg = fmt.Sprintf("High Score: %d", highScore)
+				y := c.Y + 36
+				// Title (centered)
+				textOp := &text.DrawOptions{}
+				titleWidth := float64(len(title)) * 8
+				textOp.GeoM.Translate(centerX-titleWidth/2, y)
+				text.Draw(screen, title, fontFace, textOp)
+				y += 48
+
+				// Score (centered)
+				textOpScore := &text.DrawOptions{}
+				scoreWidth := float64(len(scoreMsg)) * 8
+				textOpScore.GeoM.Translate(centerX-scoreWidth/2, y)
+				text.Draw(screen, scoreMsg, fontFace, textOpScore)
+				y += 36
+
+				// High score (centered)
+				if highScoreMsg != "" {
+					textOpHS := &text.DrawOptions{}
+					hsWidth := float64(len(highScoreMsg)) * 8
+					textOpHS.GeoM.Translate(centerX-hsWidth/2, y)
+					text.Draw(screen, highScoreMsg, fontFace, textOpHS)
+					y += 36
+				}
+
+				// Button Y positions (centered)
+				btnW, btnH := 120.0, 40.0
+				btnX := centerX - btnW/2
+				menuBtnY := c.Y + c.H - btnH*3 - 24 - 16
+				playAgainBtnY := menuBtnY + btnH + 16
+				settingsBtnY := playAgainBtnY + btnH + 16
+
+				// Main Menu button (centered)
+				menuBtnImg := ebiten.NewImage(int(btnW), int(btnH))
+				menuBtnImg.Fill(color.RGBA{60, 60, 120, 200})
+				menuBtnOp := &ebiten.DrawImageOptions{}
+				menuBtnOp.GeoM.Translate(btnX, menuBtnY)
+				screen.DrawImage(menuBtnImg, menuBtnOp)
+				menuBtnText := "Main Menu"
+				menuBtnTextWidth := float64(len(menuBtnText)) * 8
+				menuBtnTextOp := &text.DrawOptions{}
+				menuBtnTextOp.GeoM.Translate(centerX-menuBtnTextWidth/2, menuBtnY+10)
+				text.Draw(screen, menuBtnText, fontFace, menuBtnTextOp)
+
+				// Play Again button (centered)
+				playAgainBtnImg := ebiten.NewImage(int(btnW), int(btnH))
+				playAgainBtnImg.Fill(color.RGBA{60, 60, 120, 200})
+				playAgainBtnOp := &ebiten.DrawImageOptions{}
+				playAgainBtnOp.GeoM.Translate(btnX, playAgainBtnY)
+				screen.DrawImage(playAgainBtnImg, playAgainBtnOp)
+				playAgainBtnText := "Play Again"
+				playAgainBtnTextWidth := float64(len(playAgainBtnText)) * 8
+				playAgainBtnTextOp := &text.DrawOptions{}
+				playAgainBtnTextOp.GeoM.Translate(centerX-playAgainBtnTextWidth/2, playAgainBtnY+10)
+				text.Draw(screen, playAgainBtnText, fontFace, playAgainBtnTextOp)
+
+				// Settings button (centered)
+				settingsBtnImg := ebiten.NewImage(int(btnW), int(btnH))
+				settingsBtnImg.Fill(color.RGBA{60, 60, 120, 200})
+				settingsBtnOp := &ebiten.DrawImageOptions{}
+				settingsBtnOp.GeoM.Translate(btnX, settingsBtnY)
+				screen.DrawImage(settingsBtnImg, settingsBtnOp)
+				settingsBtnText := "Settings"
+				settingsBtnTextWidth := float64(len(settingsBtnText)) * 8
+				settingsBtnTextOp := &text.DrawOptions{}
+				settingsBtnTextOp.GeoM.Translate(centerX-settingsBtnTextWidth/2, settingsBtnY+10)
+				text.Draw(screen, settingsBtnText, fontFace, settingsBtnTextOp)
+			},
 		}
-
-		y := cardY + 36
-		textOp := &text.DrawOptions{}
-		textOp.GeoM.Translate(centerX-float64(len(title))*4, y)
-		text.Draw(screen, title, fontFace, textOp)
-		y += 48
-
-		textOpScore := &text.DrawOptions{}
-		textOpScore.GeoM.Translate(centerX-float64(len(scoreMsg))*4, y)
-		text.Draw(screen, scoreMsg, fontFace, textOpScore)
-		y += 36
-
-		if highScoreMsg != "" {
-			textOpHS := &text.DrawOptions{}
-			textOpHS.GeoM.Translate(centerX-float64(len(highScoreMsg))*4, y)
-			text.Draw(screen, highScoreMsg, fontFace, textOpHS)
-			y += 36
-		}
-
-		// Button Y positions
-		btnW, btnH := 120.0, 40.0
-		btnX := centerX - btnW/2
-		menuBtnY := cardY + cardH - btnH*3 - 24 - 16
-		playAgainBtnY := menuBtnY + btnH + 16
-		settingsBtnY := playAgainBtnY + btnH + 16
-
-		// Main Menu button
-		menuBtnImg := ebiten.NewImage(int(btnW), int(btnH))
-		menuBtnImg.Fill(color.RGBA{80, 80, 80, 200})
-		menuBtnOp := &ebiten.DrawImageOptions{}
-		menuBtnOp.GeoM.Translate(btnX, menuBtnY)
-		screen.DrawImage(menuBtnImg, menuBtnOp)
-		menuBtnText := "Main Menu"
-		menuBtnTextWidth := float64(len(menuBtnText)) * 8
-		menuBtnTextOp := &text.DrawOptions{}
-		menuBtnTextOp.GeoM.Translate(centerX-menuBtnTextWidth/2, menuBtnY+10)
-		text.Draw(screen, menuBtnText, fontFace, menuBtnTextOp)
-
-		// Play Again button
-		playAgainBtnImg := ebiten.NewImage(int(btnW), int(btnH))
-		playAgainBtnImg.Fill(color.RGBA{60, 60, 120, 200})
-		playAgainBtnOp := &ebiten.DrawImageOptions{}
-		playAgainBtnOp.GeoM.Translate(btnX, playAgainBtnY)
-		screen.DrawImage(playAgainBtnImg, playAgainBtnOp)
-		playAgainBtnText := "Play Again"
-		playAgainBtnTextWidth := float64(len(playAgainBtnText)) * 8
-		playAgainBtnTextOp := &text.DrawOptions{}
-		playAgainBtnTextOp.GeoM.Translate(centerX-playAgainBtnTextWidth/2, playAgainBtnY+10)
-		text.Draw(screen, playAgainBtnText, fontFace, playAgainBtnTextOp)
-
-		// Settings button
-		settingsBtnImg := ebiten.NewImage(int(btnW), int(btnH))
-		settingsBtnImg.Fill(color.RGBA{60, 60, 120, 200})
-		settingsBtnOp := &ebiten.DrawImageOptions{}
-		settingsBtnOp.GeoM.Translate(btnX, settingsBtnY)
-		screen.DrawImage(settingsBtnImg, settingsBtnOp)
-		settingsBtnText := "Settings"
-		settingsBtnTextWidth := float64(len(settingsBtnText)) * 8
-		settingsBtnTextOp := &text.DrawOptions{}
-		settingsBtnTextOp.GeoM.Translate(centerX-settingsBtnTextWidth/2, settingsBtnY+10)
-		text.Draw(screen, settingsBtnText, fontFace, settingsBtnTextOp)
-
+		card.Draw(screen)
 		return
 	}
 
@@ -961,6 +984,24 @@ func (g *Game) Reset() {
 	g.elapsedFrames = 0
 	g.score = 0
 	// Don't reset username or usernameInput here!
+}
+
+// --- Card UI Abstraction ---
+type Card struct {
+	X, Y, W, H  float64
+	BgColor     color.RGBA
+	DrawContent func(screen *ebiten.Image, card *Card)
+}
+
+func (c *Card) Draw(screen *ebiten.Image) {
+	cardImg := ebiten.NewImage(int(c.W), int(c.H))
+	cardImg.Fill(c.BgColor)
+	cardOp := &ebiten.DrawImageOptions{}
+	cardOp.GeoM.Translate(c.X, c.Y)
+	screen.DrawImage(cardImg, cardOp)
+	if c.DrawContent != nil {
+		c.DrawContent(screen, c)
+	}
 }
 
 // --- Main ---
